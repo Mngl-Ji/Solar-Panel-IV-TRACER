@@ -3,9 +3,6 @@
 // Note :  This project requires NTC   probe and 10k resistor for temperature measurement, solar cell or panel as irradiance meter, button funtion and Datalogger shield (optional) to record data for I-V curve in excel.
 // Note :  The data can be saved into SD Card via datalogger shield to plot I-V curve in excel file. By default it comes with datalogger code. If you don't have the datalogger shield, kindly delete relevant codes or it might not function properly.
 
-/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/////////////*/
-
-
         /* 0- General */
 
         int decimalPrecision = 1;                   // decimal places for values (Pmp, Vmp, Voc, Temp and Irrad) in LED Display & Serial Monitor
