@@ -8,11 +8,11 @@
         int decimalPrecision = 1;                   // decimal places for values (Pmp, Vmp, Voc, Temp and Irrad) in LED Display & Serial Monitor
                                                     // decimal places x 3 for values (Isc and Imp)
                                                     // decimal places x 2 for performance ratio (PR)
-
+        //All GPIOs can be used as outputs except GPIOs 6 to 11 (connected to the integrated SPI flash) and GPIOs 34, 35, 36 and 39 (input only GPIOs);
   
         /* 1- DC Voltage Measurement*/
 
-        int VoltageAnalogInputPin = A1;             // Which pin to measure Voltage Value
+        int VoltageAnalogInputPin = 34;             // GPIO pin to measure Voltage Value
         float R1 = 18000;                           // Input resistance value for R1 (in ohm) based on Voltage Divider Method. 
         float R2 = 2000;                            // Input resistance value for R2 (in ohm) based on Voltage Divider Method. 
         float voltage  = 0;                         /* to read the value */
@@ -23,7 +23,7 @@
 
         /* 2- DC Current Measurement */
    
-        int CurrentAnalogInputPin = A2;             // Which pin to measure Current Value 
+        int CurrentAnalogInputPin = 35;             // GPIO pin to measure Current Value 
         int mVperAmpValue = 100;                    // If using ACS712 current module : for 5A module key in 185, for 20A module key in 100, for 30A module key in 66
         float moduleMiddleVoltage = 2500;           /* when there is no reading, the voltage is at middle Vcc. For 5V power supply, the middle voltage is 2500mV;*/
         float moduleSupplyVoltage = 5000;           /* supply voltage to current sensor module, default 5000mV*/
@@ -61,8 +61,10 @@
         #include <WiFi.h>
         #include <WiFiClient.h>
         #include <WebServer.h>  //https://github.com/bbx10/WebServer_tng
-        #include "Adafruit_BME280.h" //https://github.com/Takatsuki0204/BME280-I2C-ESP32
-        
+        #define I2C_SDA 32
+        #define I2C_SCL 33
+        pinMode(34, INPUT);
+        pinMode(35, INPUT);
         int IGBTPin = 4; // 1st IGBT as a switch
         int IGBTPin1 = 6; //2nd IGBT as a switch(edit)
         const char* wifi_name = "Tenda_31BC98"; // Your Wifi network name here
@@ -105,21 +107,24 @@
         void loop()                                         /* The Codes run repeatly over and over again.*/
         
           {
-                  SampleCount=0;
-                  if(SampleCount == 50)
-                  {
-                         voltage = analogRead(VoltageAnalogInputPin);
+                  
+               
+                          void getValues() {
+               
+                          digitalWrite(IGBTPin, HIGH);
+                          voltage = analogRead(VoltageAnalogInputPin);
                          float  V = ((voltage*moduleSupplyVoltageV)/1024.0) / (R2/(R1+R2));                    /* Calculate the expected monitoring votlage */
                          current = analogRead(CurrentAnalogInputPin); 
                          float  I = (((current /1024) *5000) /mVperAmpValue);                                      /* calculate the final RMS current*/ 
                          float PowerValue =  I * V;
-                         SampleCount = SampleCount + 1;                                                      /* to move on to the next following count */
                          Serial.println(V);
                          Serial.println(I);
                          Serial.println(PowerValue);
-                  }
+                                           }
             
-                    SampleCount=0; 
+                         Serial.setTimeout(100);
+                         digitalWrite(IGBTPin, LOW);
+        
         
                
                 /* 6 Recording & Calculation */
@@ -187,56 +192,5 @@
           digitalWrite(relay_pin, HIGH);
           delay(2000);//time period for which 2nd switch will be on
           digitalWrite(relay_pin, LOW);
-          delay(2000);}//time period for which 2nd switch will be off */
-          /* #include <Wire.h>
-        #include "Adafruit_BME280.h"
-        
-        #define I2C_SDA 32
-        #define I2C_SCL 33
-        #define SEALEVELPRESSURE_HPA (1013.25)
-        #define BME280_ADD 0x76
-        
-        void getValues(void);
-        
-        Adafruit_BME280 bme(I2C_SDA, I2C_SCL);
-        
-        void setup() {
-          Serial.begin(115200);
-          Serial.println("Program Start");
-        
-          bool status;
-        
-          status = bme.begin(BME280_ADD);
-          if (!status) {
-            Serial.println("Could not find a valid BME280 sensor, check wiring!");
-            while (1);
-          }
-          delay(1000);
-        }
-        
-        void loop() {
-          getValues();
-          delay(3000);
-        }
-        
-        void getValues() {
-          Serial.print("Temperature = ");
-          Serial.print(bme.readTemperature());
-          Serial.println(" ℃");
-        
-          Serial.print("Pressure = ");
-        
-          Serial.print(bme.readPressure() / 100.0F);
-          Serial.println(" hPa");
-        
-          Serial.print("Approx. Altitude = ");
-          Serial.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
-          Serial.println(" m");
-        
-          Serial.print("Humidity = ");
-          Serial.print(bme.readHumidity());
-          Serial.println(" %");
-        
-          Serial.println();
-        }
-        */
+          delay(2000);//time period for which 2nd switch will be off */
+          */
