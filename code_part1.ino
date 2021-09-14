@@ -1,18 +1,21 @@
-// Note :  I-V Tracer code is designed to determine the quality of a panel. A term called Performance Ratio determines whether the generation of solar is as expected compared to theoritical calculation.
+ // Note :  I-V Tracer code is designed to determine the quality of a panel. A term called Performance Ratio determines whether the generation of solar is as expected compared to theoritical calculation.
 // Note :  This device can also determine the Vmp, Imp, Pmp, Voc and Isc of the panel.
 // Note :  This project requires NTC   probe and 10k resistor for temperature measurement, solar cell or panel as irradiance meter, button funtion and Datalogger shield (optional) to record data for I-V curve in excel.
 // Note :  The data can be saved into SD Card via datalogger shield to plot I-V curve in excel file. By default it comes with datalogger code. If you don't have the datalogger shield, kindly delete relevant codes or it might not function properly.
+
+/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/////////////*/
+
 
         /* 0- General */
 
         int decimalPrecision = 1;                   // decimal places for values (Pmp, Vmp, Voc, Temp and Irrad) in LED Display & Serial Monitor
                                                     // decimal places x 3 for values (Isc and Imp)
                                                     // decimal places x 2 for performance ratio (PR)
-        //All GPIOs can be used as outputs except GPIOs 6 to 11 (connected to the integrated SPI flash) and GPIOs 34, 35, 36 and 39 (input only GPIOs);
+
   
         /* 1- DC Voltage Measurement*/
 
-        int VoltageAnalogInputPin = 34;             // GPIO pin to measure Voltage Value
+        int VoltageAnalogInputPin = A1;             // Which pin to measure Voltage Value
         float R1 = 18000;                           // Input resistance value for R1 (in ohm) based on Voltage Divider Method. 
         float R2 = 2000;                            // Input resistance value for R2 (in ohm) based on Voltage Divider Method. 
         float voltage  = 0;                         /* to read the value */
@@ -23,7 +26,7 @@
 
         /* 2- DC Current Measurement */
    
-        int CurrentAnalogInputPin = 35;             // GPIO pin to measure Current Value 
+        int CurrentAnalogInputPin = A2;             // Which pin to measure Current Value 
         int mVperAmpValue = 100;                    // If using ACS712 current module : for 5A module key in 185, for 20A module key in 100, for 30A module key in 66
         float moduleMiddleVoltage = 2500;           /* when there is no reading, the voltage is at middle Vcc. For 5V power supply, the middle voltage is 2500mV;*/
         float moduleSupplyVoltage = 5000;           /* supply voltage to current sensor module, default 5000mV*/
@@ -61,10 +64,8 @@
         #include <WiFi.h>
         #include <WiFiClient.h>
         #include <WebServer.h>  //https://github.com/bbx10/WebServer_tng
-        #define I2C_SDA 32
-        #define I2C_SCL 33
-        pinMode(34, INPUT);
-        pinMode(35, INPUT);
+        #include "Adafruit_BME280.h" //https://github.com/Takatsuki0204/BME280-I2C-ESP32
+        
         int IGBTPin = 4; // 1st IGBT as a switch
         int IGBTPin1 = 6; //2nd IGBT as a switch(edit)
         const char* wifi_name = "Tenda_31BC98"; // Your Wifi network name here
@@ -104,30 +105,44 @@
                 }
         
           
-        void loop()                                         /* The Codes run repeatly over and over again.*/
+        void loop()      
+            // setInterval(function, milliseconds, param1, param2, ...)
         
-          {
-                  
-               
-                          void getValues() {
-               
-                          digitalWrite(IGBTPin, HIGH);
-                          voltage = analogRead(VoltageAnalogInputPin);
+          {             
+
+             
+             digitalWrite(IGBTPin1, HIGH);
+             current = analogRead(CurrentAnalogInputPin); 
+             float  I = (((current /1024) *5000) /mVperAmpValue);  
+             float Isc=I;
+             
+             
+                         if (I >0)
+                         {
+                         digitalWrite(IGBTPin, HIGH);
+                         digitalWrite(relay_pin, LOW);
+                         voltage = analogRead(VoltageAnalogInputPin);
                          float  V = ((voltage*moduleSupplyVoltageV)/1024.0) / (R2/(R1+R2));                    /* Calculate the expected monitoring votlage */
                          current = analogRead(CurrentAnalogInputPin); 
                          float  I = (((current /1024) *5000) /mVperAmpValue);                                      /* calculate the final RMS current*/ 
-                         float PowerValue =  I * V;
+                         float Power =  I * V;
                          Serial.println(V);
                          Serial.println(I);
                          Serial.println(PowerValue);
-                                           }
-            
-                         Serial.setTimeout(100);
+                         }
+                         elseif I=0
+                         {
                          digitalWrite(IGBTPin, LOW);
-        
-        
+                         digitalWrite(relay_pin, HIGH);
+                         Serial.setTimeout(100);
+                         }
+                         
                
-                /* 6 Recording & Calculation */
+          }      
+          
+          
+          
+          /* 6 Recording & Calculation */
         
                 if(InitiateReading == 1)                                                                    // If Left button is pressed to start measuring
                   {
@@ -178,19 +193,15 @@
                   }
            }
         
-           /* //control of IGBT with esp32
-          digitalWrite(IGBTPin, HIGH);
-          delay(2000);//time period for which 1st switch will be on
-          digitalWrite(IGBTPin, LOW);
-          delay(2000);//time period for which 1st switch will be off
-          //control of IGBT with esp32
-          digitalWrite(IGBTPin1, HIGH);
-          delay(2000);//time period for which 2nd switch will be on
-          digitalWrite(IGBTPin1, LOW);
-          delay(2000);}//time period for which 2nd switch will be off
-          //control of relay 
-          digitalWrite(relay_pin, HIGH);
-          delay(2000);//time period for which 2nd switch will be on
-          digitalWrite(relay_pin, LOW);
-          delay(2000);//time period for which 2nd switch will be off */
-          */
+             /* //control of IGBT with esp32
+            digitalWrite(IGBTPin, HIGH);
+            delay(2000);//time period for which 1st switch will be on
+            digitalWrite(IGBTPin, LOW);
+            delay(2000);//time period for which 1st switch will be off
+            //control of IGBT with esp32
+            digitalWrite(IGBTPin1, HIGH);
+            delay(2000);//time period for which 2nd switch will be on
+            digitalWrite(IGBTPin1, LOW);
+            delay(2000);}//time period for which 2nd switch will be off
+            //control of relay
+          
