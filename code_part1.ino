@@ -63,27 +63,32 @@
         #include <WebServer.h>  //https://github.com/bbx10/WebServer_tng
         #define I2C_SDA 32
         #define I2C_SCL 33
-        pinMode(34, INPUT);
-        pinMode(35, INPUT);
-        int IGBTPin = 4; // 1st IGBT as a switch
-        int IGBTPin1 = 6; //2nd IGBT as a switch(edit)
         const char* wifi_name = "Tenda_31BC98"; // Your Wifi network name here
         const char* wifi_pass = "barcelona";    // Your Wifi network password here
         WiFiServer server(80);    // Server will be at port 80
-        
+         
+
+
+        /*Now we will set the pins for the relay and the IGBTs switch*/
+        int IGBTPin = 4; // 1st IGBT as a switch
+        int IGBTPin1 = 6; //2nd IGBT as a switch(edit)
         int relay_pin = 2; //to control electronic relay
-
-
-        void setup()                                        /* The Codes only run 1 time only when Arduino started.*/
+         void setup()                                        /* The Codes only run 1 time only when it started.*/
          
                 {
-               Serial.begin (115200);
+                Serial.begin (115200);
                 pinMode (relay_pin, OUTPUT);
-              
+                pinMode (IGBTPin, OUTPUT);
+                pinMode (IGBTPin1, OUTPUT);
+                pinMode(34, INPUT);
+                pinMode(35, INPUT);
+                /* 5 - SD memory card shield */
+                pinMode(chipSelect,OUTPUT);                 /* reserve pin  as pin to write data in SD card by default, the pin is fixed in Arduino UNO*/
+                SD.begin(chipSelect);                       /* Initialise the SD Card with chipSelect connected to pin   by default*/
+            
                 Serial.print ("Connecting to ");
                 Serial.print (wifi_name);
                 WiFi.begin (wifi_name, wifi_pass);     // Connecting to the wifi network
-              
                 while (WiFi.status() != WL_CONNECTED) // Waiting for the response of wifi network
                 {
                   delay (500);
@@ -95,39 +100,51 @@
                 Serial.println(WiFi.localIP());           // Getting the IP address
                 Serial.println("Type the above IP address into browser search bar"); 
                 server.begin();                           // Starting the server
-                
-                /* 5 - SD memory card shield */
-            
-                pinMode(chipSelect,OUTPUT);                 /* reserve pin  as pin to write data in SD card by default, the pin is fixed in Arduino UNO*/
-                SD.begin(chipSelect);                       /* Initialise the SD Card with chipSelect connected to pin   by default*/
-            
+               
                 }
         
           
-        void loop()                                         /* The Codes run repeatly over and over again.*/
+        void loop()      
+            // setInterval(function, milliseconds, param1, param2, ...)
         
-          {
-                  
-               
-                          void getValues() {
-               
-                          digitalWrite(IGBTPin, HIGH);
-                          voltage = analogRead(VoltageAnalogInputPin);
+          {             
+                         // IGBTPin1 is control the one IGBT connected directly with solar panel in series to calculate the short circuit currrent of solar panel
+                         digitalWrite(IGBTPin1, HIGH);
+                         current = analogRead(CurrentAnalogInputPin); 
+                         float  I = (((current /1024) *5000) /mVperAmpValue);  
+                         float Isc=I;
+
+                         //Now we will charge the capacitor by make the second IGBT ON, through which our current and voltage sensor can take a finite no. of reading to plot a graph
+                         if I>0
+                         {
+                         for(int i=0;i<=50;i++)
+                         {
+                         digitalWrite(IGBTPin, HIGH);
+                         digitalWrite(relay_pin, LOW);
+                         voltage = analogRead(VoltageAnalogInputPin);
                          float  V = ((voltage*moduleSupplyVoltageV)/1024.0) / (R2/(R1+R2));                    /* Calculate the expected monitoring votlage */
                          current = analogRead(CurrentAnalogInputPin); 
                          float  I = (((current /1024) *5000) /mVperAmpValue);                                      /* calculate the final RMS current*/ 
-                         float PowerValue =  I * V;
+                         float Power =  I * V;
                          Serial.println(V);
                          Serial.println(I);
                          Serial.println(PowerValue);
-                                           }
-            
-                         Serial.setTimeout(100);
+                         }
+                         }
+                         elseif I=0
+                         {
                          digitalWrite(IGBTPin, LOW);
-        
-        
+                         float  Voc = ((analogRead(VoltageAnalogInputPin)*moduleSupplyVoltageV)/1024.0) / (R2/(R1+R2)); //This will measure the open source voltage of solar panel while the capacitor behaves as open circuit in fully charged condition
+                         digitalWrite(relay_pin, HIGH);
+                         Serial.setTimeout(100);
+                         }
+                         
                
-                /* 6 Recording & Calculation */
+          }      
+          
+          
+          
+          /* 6 Recording & Calculation */
         
                 if(InitiateReading == 1)                                                                    // If Left button is pressed to start measuring
                   {
@@ -147,19 +164,6 @@
                           }
                       }
                   
-                    if(millis() >= recordLastSample + 10)                                                   /* for every 10 milli seconds do the following */
-                      {
-                        if( Vmp >= VocInitial)                                                     /* record the value as Voc if there is higher voltage value measured */
-                          { VocInitial = Vmp ; }
-                  
-                        if( Imp >= IscInitial)                                                     /* record the value as Isc if there is higher current value measured */
-                          { IscInitial = Imp ; }
-                  
-                        if(( Imp*Vmp) >= PmpInitial)                                      /* If there is higher power measured */
-                          { 
-                            PmpInitial =  Imp*Vmp ;                                       /* record the power value as Pmp */
-                             }
-            
                         /* 8 - SD memory card shield */
                   
                         mySensorData=SD.open("IVCur.txt",FILE_WRITE);                                       // Open or create IVCur.txt on the SD card as a file to write to
@@ -178,19 +182,3 @@
                   }
            }
         
-           /* //control of IGBT with esp32
-          digitalWrite(IGBTPin, HIGH);
-          delay(2000);//time period for which 1st switch will be on
-          digitalWrite(IGBTPin, LOW);
-          delay(2000);//time period for which 1st switch will be off
-          //control of IGBT with esp32
-          digitalWrite(IGBTPin1, HIGH);
-          delay(2000);//time period for which 2nd switch will be on
-          digitalWrite(IGBTPin1, LOW);
-          delay(2000);}//time period for which 2nd switch will be off
-          //control of relay 
-          digitalWrite(relay_pin, HIGH);
-          delay(2000);//time period for which 2nd switch will be on
-          digitalWrite(relay_pin, LOW);
-          delay(2000);//time period for which 2nd switch will be off */
-          */
