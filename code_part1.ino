@@ -111,9 +111,9 @@
                          // IGBTPin1 is control the one IGBT connected directly with solar panel in series to calculate the short circuit currrent of solar panel
                          digitalWrite(IGBTPin1, HIGH);
                          current = analogRead(CurrentAnalogInputPin); 
-                         float  I = (((current /1024) *5000) /mVperAmpValue);  
+                         float  I = (((current /4095) *5000) /mVperAmpValue);  // Esp32 has ADC value of 12 bits
                          float Isc=I;
-
+                         digitalWrite(IGBTPin1, LOW);
                          //Now we will charge the capacitor by make the second IGBT ON, through which our current and voltage sensor can take a finite no. of reading to plot a graph
                          if I>0
                          {
